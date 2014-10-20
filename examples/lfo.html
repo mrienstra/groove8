@@ -1,0 +1,112 @@
+<html>
+<head>
+	<title>LFO</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+	<script type="text/javascript" src="./deps/jquery.min.js"></script>
+	<script type="text/javascript" src="./deps/jquery-ui.js"></script>
+	<script type="text/javascript" src="./deps/jquery.ui.touch-punch.js"></script>
+	<script type="text/javascript" src="../build/Tone.js"></script>
+	<script type="text/javascript" src="./Widgets.js"></script>
+	<script type="text/javascript" src="./ExampleList.js"></script>
+	<link rel="stylesheet" type="text/css" href="./style/widgets.css">
+	<link rel="stylesheet" type="text/css" href="./style/jquery-ui.css">
+
+</head>
+<body>
+		
+	<div id="Container">
+		<div id="Explanation">
+			Low Frequency Oscillators
+			<br>
+			<br>
+			<a href="http://en.wikipedia.org/wiki/Low-frequency_oscillation">LFOs</a> are a powerful musical tool. 
+			LFOs can be connected to Tone.Signals and AudioParams to control nearly anything. This example uses
+			a slow square wave LFO on the pitch and two sine waves on the detune and amplitude. 
+		</div>
+		<div id="Content"></div>
+	</div>
+
+
+	<script type="text/javascript">
+		/* globals Tone, GUI */
+
+		var osc = new Tone.Oscillator(110, "triangle");
+		osc.setVolume(-10);
+
+		var freqLFO = new Tone.LFO(0.1, 80, 160);
+		freqLFO.setType("square");
+		freqLFO.connect(osc.frequency);
+
+		var detuneLFO = new Tone.LFO(12, -80, 80);
+		var detuneAmount = new Tone.Multiply(1);
+		detuneLFO.connect(detuneAmount);
+		detuneAmount.connect(osc.detune);
+		
+		var amplitudeLFO = new Tone.LFO(10, 0.05, 1);
+		var ampAmount = new Tone.DryWet(1);
+		var ampNode = Tone.context.createGain();
+		osc.connect(ampNode);
+		ampNode.connect(ampAmount.wet);
+		osc.connect(ampAmount.dry);
+		amplitudeLFO.connect(ampNode.gain);
+
+		ampAmount.toMaster();
+
+		// GUI //
+
+		var content = $("#Content");
+
+		new GUI.TopBar(Tone);
+
+		new GUI.Checkbox(content, function(on){
+			if (on){
+				osc.start();
+				freqLFO.start();
+				detuneLFO.start();
+				amplitudeLFO.start();
+			} else {
+				osc.stop();
+				freqLFO.stop();
+				detuneLFO.stop();
+				amplitudeLFO.stop();
+			}
+		}, "start", "stop");
+
+		//sliders
+		var freqSlider = new GUI.Slider(content, function(val){
+			var scaled = val * 2 + 0.1;
+			freqLFO.setFrequency(scaled);
+			return scaled;
+		}, 1, "pitch LFO", "hz");
+		freqSlider.render(0.1);
+		var detuneSlider = new GUI.Slider(content, function(val){
+			detuneAmount.setValue(val);
+			return val * 100;
+		}, 1, "detune LFO", "%");
+		detuneSlider.render(0.5);
+		var amplitudeSlider = new GUI.Slider(content, function(val){
+			ampAmount.setWet(val);
+			return val * 100;
+		}, 1, "amplitude LFO", "%");
+		amplitudeSlider.render(0.75);
+
+	</script>
+
+	<style type="text/css">
+		#Content {
+			text-align: center;
+			width: 220px;
+			height: 250px;
+		}
+		.Slider {
+			margin-top: 15px;
+		}
+		.Checkbox {
+			width: 100%;
+		}
+	</style>
+
+</body>
+</html>
