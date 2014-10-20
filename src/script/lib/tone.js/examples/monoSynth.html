@@ -1,0 +1,170 @@
+<html>
+<head>
+	<title>MONOSYNTH</title>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+	<script type="text/javascript" src="./deps/jquery.min.js"></script>
+	<script type="text/javascript" src="./deps/jquery-ui.js"></script>
+	<script type="text/javascript" src="./deps/jquery.ui.touch-punch.js"></script>
+	<script type="text/javascript" src="../build/Tone.js"></script>
+	<script type="text/javascript" src="../build/Tone.Preset.js"></script>
+	<script type="text/javascript" src="./Widgets.js"></script>
+	<script type="text/javascript" src="./ExampleList.js"></script>
+	<link rel="stylesheet" type="text/css" href="./style/widgets.css">
+	<link rel="stylesheet" type="text/css" href="./style/jquery-ui.css">
+	<script type="text/javascript" src="./deps/qwerty-hancock.js"></script>
+
+</head>
+<body>
+
+	<div id="Container">
+		<div id="Explanation">
+			MonoSynth
+			<br>
+			<br>
+			MonoSynth is a monophonic synthesizer composed simply of one oscillator, 
+			a filter and two envelopes (on amplitude and filter). 
+		</div>
+		<div id="Content">
+			<div id="tabs">
+			  <ul>
+			    <li><a href="#envelope">Osc/Env</a></li>
+			    <li><a href="#filter">FilterEnv</a></li>
+			    <li><a href="#presets">Presets</a></li>
+			  </ul>
+			  <div id="envelope">
+			   
+			  </div>
+			  <div id="filter">
+			   
+			  </div>
+			  <div id="presets">
+			    
+			  </div>
+			</div>
+
+
+		</div>
+	</div>
+
+	<script type="text/javascript">
+
+		/* globals Tone, GUI, QwertyHancock */
+			
+		var synth = new Tone.MonoSynth();
+		synth.setVolume(-10);
+		synth.toMaster();
+
+		// GUI //
+
+		new GUI.TopBar(Tone);
+
+		$("#tabs").tabs();
+
+		var content = $("#Content");
+		var envelope = $("#envelope");
+		var filter = $("#filter");
+		var presets = $("#presets");
+
+		//envelopes
+		var ampEnv = new GUI.Envelope(envelope, synth.envelope, "amplitude");
+		var osc = new GUI.Oscillator(envelope, synth.oscillator, "oscillator");
+
+		//filter
+		var filtEnv =new GUI.Envelope(filter, synth.filterEnvelope, "filter");
+		var min = 20;
+		var max = 20000;
+		var minFilFreq = new GUI.Slider(filter, function(val){
+			var freq = Math.pow(val, 2);
+			var scaled = freq * (max - min) + min;
+			synth.filterEnvelope.min = scaled;
+			return scaled;
+		}, min, "start freq", "hz");
+		var maxFilFreq = new GUI.Slider(filter, function(val){
+			var freq = Math.pow(val, 2);
+			var scaled = freq * (max - min) + min;
+			synth.filterEnvelope.max = scaled;
+			return scaled;
+		}, min, "end freq", "hz");
+
+		//presets
+		var allPresets = [];
+		for (var name in synth.preset){
+			allPresets.push(name);
+		}
+
+		new GUI.DropDown(presets, allPresets, function(name){
+			setPreset(name);
+		});
+
+		//keyboard
+		$("<div>", {"id" : "Keyboard"}).appendTo(content);
+		var keyboard = new QwertyHancock({
+			id: "Keyboard",
+			width: 350,
+			height: 75,
+			octaves: 2,
+			startNote: "A3",
+			whiteNotesColour: "white",
+			blackNotesColour: "black",
+			hoverColour: "#f3e939"
+		});
+		keyboard.keyDown = function(note, freq){
+			synth.triggerAttack(freq);
+		};
+		keyboard.keyUp = function(){
+			synth.triggerRelease();
+		};
+
+		function setPreset(name){
+			synth.setPreset(name);
+			ampEnv.render();
+			filtEnv.render();
+			osc.render();
+			var minVal = Math.pow(Math.max((synth.filterEnvelope.min - min) / (max - min), 0), 0.5);
+			minFilFreq.render(minVal);
+			var maxVal = Math.pow(Math.max((synth.filterEnvelope.max - min) / (max - min), 0), 0.5);
+			maxFilFreq.render(maxVal);
+		}
+
+		setPreset("Pianoetta");
+		
+	</script>
+
+	<style type="text/css">
+	#Content {
+		width: 350px;
+	}
+
+	#tabs {
+		height: 300px;
+	}
+
+	.Slider {
+		width: 80%;
+		margin-left: 10%;
+		margin-top: 10px;
+	}
+
+	.Oscillator {
+		width: 80%;
+		margin-left: 10%;
+		margin-top: 40px;
+	}
+
+	.Envelope {
+		margin: auto;
+	}
+
+	#Keyboard {
+		background-color: black;
+	}
+
+	#presets .DropDown {
+		margin: auto;
+		margin-top: 50px;
+	}
+	</style>
+</body>
+</html>

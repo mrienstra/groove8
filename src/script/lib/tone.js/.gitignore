@@ -1,0 +1,26 @@
+
+*.scssc
+
+examples/scratch.html
+
+*.sublime-workspace
+
+*.sublime-project
+
+# grunt modules
+utils/node_modules/*
+
+TODO.txt
+
+# all the npm stuff
+utils/npm/Tone
+utils/npm/build/Tone.js
+utils/npm/build/Tone.min.js
+utils/npm/build/Tone.Preset.js
+utils/npm/README.md
+
+examples/deps/FileSaver.js
+
+examples/oscilloscope.html
+
+.idea
