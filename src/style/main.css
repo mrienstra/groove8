@@ -1,0 +1,43 @@
+#Content {
+  width: 400px;
+  height: 400px;
+}
+
+#tabs {
+  height: 300px;
+}
+
+.Slider {
+  width: 80%;
+  margin-left: 10%;
+  margin-top: 10px;
+}
+
+.Oscillator {
+  width: 80%;
+  margin-left: 10%;
+  margin-top: 10px;
+}
+
+#envelope1 .Oscillator {
+  margin-top: 10px;
+}
+
+.Envelope {
+  margin: auto;
+}
+
+#Keyboard {
+  background-color: black;
+}
+
+#presets #PresetText {
+  width: 100%;
+  text-align: center;
+  margin-top: 20px;
+}
+
+#presets .DropDown {
+  margin: auto;
+  margin-top: 5px;
+}
