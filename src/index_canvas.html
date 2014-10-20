@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <title>GROOVE/8 Demo</title>
+    <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+    }
+    h1 {
+      position: absolute;
+      bottom: 0; left: 0;
+      padding: 10px;
+      font-size: 150%;
+      width: 100%;
+      font-family: "Lucida Grande";
+      margin: 0;
+      color: purple;
+      text-shadow: 2px 2px 1px #fff;
+      border-top: 2px solid #ddd;
+      background-color: #eee;
+    }
+    </style>
+  </head>
+  <body>
+    <h1>GROOVE/8</h1>
+    <canvas id="c"></canvas>
+    <script>
+    // Globals
+    var fill = '#f2f2f2';
+    var stroke = '#000';
+    var num_keys = 8;
+    // Functions
+    function initCanvas(canvas){
+      var container = canvas.parentNode;
+      //Run function when browser resizes
+      window.onresize = function(event) {
+        respondCanvas(canvas,container);
+        drawKeys(canvas);
+      }
+      // Initial call
+      respondCanvas(canvas, container);
+      return canvas;
+    }
+    function respondCanvas(canvas, container){
+      console.log(canvas);
+      console.log(container.offsetWidth);
+      console.log(container.offsetHeight);
+      console.log(canvas.style.width);
+      canvas.width = container.offsetWidth; //max width
+      canvas.height = container.offsetHeight; //max height
+
+      //Call a function to redraw other content (texts, images etc)
+      drawKeys(canvas);
+    }
+    function drawKeys(c){
+      canvas = c.getContext('2d');
+//      hex(canvas, size, 2*size, -size, fill, stroke);
+      hex_row(c, canvas, num_keys);
+    }
+    function hex(c, size, x0, y0, fill, stroke){
+      c.beginPath();
+      c.moveTo(size+x0, size+y0);
+      c.lineTo(2*size+x0, 2*size+y0);
+      c.lineTo(2*size+x0, 3*size+y0);
+      c.lineTo(size+x0, 4*size+y0);
+      c.lineTo(0+x0, 3*size+y0);
+      c.lineTo(0+x0, 2*size+y0);
+      c.closePath();
+      c.fillStyle = fill;
+      c.strokeStyle = stroke;
+      c.stroke();
+      c.fill();
+    };
+    function hex_row(c, canvas, num){
+      var size = Math.floor(c.width / num) / 2;
+      console.log(c.width);
+      console.log(size);
+      size=50;
+      for (i=0; i<num; i++) {
+        var j=2*i+1;
+        hex(canvas, size, j*size, size, fill, stroke);
+      }
+    }
+    canvas = initCanvas(document.getElementById('c'));
+    drawKeys(canvas);
+    </script>
+  </body>
+</html>
