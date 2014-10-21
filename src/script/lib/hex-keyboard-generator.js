@@ -126,7 +126,7 @@
      */
     var lightenUp = function lightenUp (el) {
         if (el !== null || typeof el === undefined) {
-            el.style.backgroundColor = settings.activeColour;
+            // el.style.backgroundColor = settings.activeColour;
         }
     };
 
@@ -137,9 +137,9 @@
     var darkenDown = function darkenDown (el) {
         if (el !== null) {
             if (el.getAttribute('data-note-type') === 'white') {
-                el.style.backgroundColor = settings.whiteKeyColour;
+                // el.style.backgroundColor = settings.whiteKeyColour;
             } else {
-                el.style.backgroundColor = settings.blackKeyColour;
+                // el.style.backgroundColor = settings.blackKeyColour;
             }
         }
     };
@@ -178,8 +178,8 @@
     * @param  {object} key Element of key.
     */
     var styleKey = function (key) {
-        //key.el.style.width = key.width + 'px';
-        //key.el.style.height = key.height + 'px';
+        key.el.style.width = key.width + 'px';
+        key.el.style.height = key.height + 'px';
         key.el.innerHTML = '<div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2"><h1>' + key.id + '</h1></div></div></div>';
     };
 

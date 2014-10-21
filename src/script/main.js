@@ -11,29 +11,9 @@ new GUI.TopBar(Tone);
 $("#tabs").tabs();
 
 var content = $("#Content");
-var envelope0 = $("#envelope0");
-var envelope1 = $("#envelope1");
 var filter0 = $("#filter0");
 var filter1 = $("#filter1");
 var presets = $("#presets");
-
-//osc 0
-var ampEnv0 = new GUI.Envelope(envelope0, synth.carrier.envelope, "amplitude");
-var osc0 = new GUI.Oscillator(envelope0, synth.carrier.oscillator, "oscillator");
-var osc0Vol = new GUI.Slider(envelope0, function(val){
-  var vol = synth.gainToDb(val);
-  synth.carrier.setVolume(vol);
-  return vol;
-}, 1, "volume", "db");
-
-//osc 1
-var ampEnv1 = new GUI.Envelope(envelope1, synth.modulator.envelope, "amplitude");
-var osc1 = new GUI.Oscillator(envelope1, synth.modulator.oscillator, "oscillator");
-var osc1Vol = new GUI.Slider(envelope1, function(val){
-  var vol = synth.gainToDb(val);
-  synth.modulator.setVolume(vol);
-  return vol;
-}, 1, "volume", "db");
 
 //filt 0
 var min = 20;
@@ -92,11 +72,8 @@ var keyboard = new QwertyHancock({
   id: "Keyboard",
   width: 400,
   height: 75,
-  octaves: 2,
+  octaves: 3,
   startNote: "A2",
-  whiteNotesColour: "white",
-  blackNotesColour: "black",
-  hoverColour: "#f3e939"
 });
 keyboard.keyDown = function(note, freq){
   synth.triggerAttack(freq);
@@ -108,12 +85,6 @@ keyboard.keyUp = function(){
 function setPreset(name){
   synth.setPreset(name);
   var preset = synth.preset[name];
-  ampEnv0.render();
-  ampEnv1.render();
-  osc0.render();
-  osc0Vol.render(synth.dbToGain(preset.carrier.volume));
-  osc1.render();
-  osc1Vol.render(synth.dbToGain(preset.modulator.volume));
   filtEnv0.render();
   var minVal0 = Math.pow(Math.max((preset.carrier.filterEnvelope.min - min) / (max - min), 0), 0.5);
   minFilFreq0.render(minVal0);
@@ -128,4 +99,4 @@ function setPreset(name){
   modulationIndex.render(preset.modulationIndex / 50);		
 }
 
-setPreset("Trumpet");
+setPreset("Koto");

@@ -5,7 +5,11 @@ var row_3 = ["C", "E", "G", "A"];
 
 var num_hex = 8;
 
-function generate_letters(row) {
+function generateRow(){
+  
+}
+
+function generateLetters(row) {
   for (i=0; i<num_hex; i++) {
     var note = row[(i % row.length)];
     var incidental = note.substring(1,2);
@@ -20,7 +24,7 @@ function generate_letters(row) {
   }
 }
 
-generate_letters(row_2);
+generateLetters(row_2);
 
 // Show / hide letters
 $('#letters').click(function(){
