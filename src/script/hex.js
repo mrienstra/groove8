@@ -4,17 +4,26 @@ var rows = [
   ['D', 'F', 'Ab', 'B'],
   ['C', 'E', 'G', 'A']
 ];
+var startingOctave = 2;
+var notesPerOctave = 4;
 var num_hex = 8;
 
 
 
+var getNoteFrequency = function (note) {
+  // See `src/script/lib/music.js-5277f8a.js`
+  return Note.fromLatin(note).frequency();
+};
+
 var generateRowOfKeys = function (index, row) {
   var rowOfKeys = [];
+  var octave;
   var i;
   for (i = 0; i < num_hex; i++) {
     var note = row[(i % row.length)];
     var incidental = note.substring(1, 2);
-    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2">';
+    var octave = startingOctave + Math.floor(i / notesPerOctave);
+    var keyHTML = '<div class="key" data-frequency="' + getNoteFrequency(note + octave) + '"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2">';
     var sup;
 
     if (incidental == '') {
@@ -36,7 +45,7 @@ var generateRowOfKeys = function (index, row) {
 }
 
 var sizeKeys = function(){
-  var new_size = '100%';
+  var new_size = '200%';
   $('html').css('font-size', new_size);
   $('body').css('font-size', new_size);
 }
@@ -52,7 +61,6 @@ var keysContainer = document.getElementById('keys');
 
 var i, l;
 for (i = 0, l = rows.length; i < l; i++) {
-  console.log('i', i);
   insertRow(i, rows[i], keysContainer);
 };
 
@@ -61,4 +69,15 @@ sizeKeys();
 // Show / hide letters
 $('#letters').click(function(){
   $('.key h1').toggle();
+});
+
+var synth = new Tone.FMSynth();
+synth.setVolume(-10);
+synth.toMaster();
+
+$('#keys').on('mouseenter', '.key', function(){
+  synth.triggerAttack($(this).data('frequency'));
+});
+$('#keys').on('mouseleave', '.key', function(){
+  synth.triggerRelease();
 });
