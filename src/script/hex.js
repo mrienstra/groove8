@@ -24,7 +24,15 @@ function generateLetters(row) {
   }
 }
 
+function sizeKeys(){
+  var new_size = '100%';
+  $('html').css('font-size',new_size);
+  $('body').css('font-size',new_size);
+}
+
 generateLetters(row_2);
+
+sizeKeys();
 
 // Show / hide letters
 $('#letters').click(function(){
