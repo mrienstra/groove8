@@ -36,7 +36,7 @@ var generateRowOfKeys = function (index, row) {
 }
 
 var sizeKeys = function(){
-  var new_size = '200%';
+  var new_size = '100%';
   $('html').css('font-size', new_size);
   $('body').css('font-size', new_size);
 }
