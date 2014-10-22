@@ -1,36 +1,60 @@
 // Globals
-var row_1 = ["Db", "Eb", "Gb", "Bb"];
-var row_2 = ["D", "F", "Ab", "B"];
-var row_3 = ["C", "E", "G", "A"];
-
+var rows = [
+  ['Db', 'Eb', 'Gb', 'Bb'],
+  ['D', 'F', 'Ab', 'B'],
+  ['C', 'E', 'G', 'A']
+];
 var num_hex = 8;
 
-function generateRow(){
-  
-}
 
-function generateLetters(row) {
-  for (i=0; i<num_hex; i++) {
+
+var generateRowOfKeys = function (index, row) {
+  var rowOfKeys = [];
+  var i;
+  for (i = 0; i < num_hex; i++) {
     var note = row[(i % row.length)];
-    var incidental = note.substring(1,2);
-    var output = '';
+    var incidental = note.substring(1, 2);
+    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2">';
+    var sup;
+
     if (incidental == '') {
-      output = '<h1>'+note+'</h1>';
+      keyHTML += '<h1>' + note + '</h1>';
     } else {
-      var sup = (incidental == 'b') ? '&#x266d;' : '&#x266f;';
-      output = '<h1 class="incidental">'+note.substring(0,1)+'<sup>'+sup+'</sup></h1>';
+      sup = (incidental === 'b') ? '&#x266d;' : '&#x266f;';
+      keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup></h1>';
     }
-    console.log(output);
+    keyHTML += '</div></div></div></div>';
+
+    rowOfKeys.push(keyHTML);
   }
+
+  var rowDIV = document.createElement('div');
+  rowDIV.id = 'r' + index;
+  rowDIV.className = 'row';
+  rowDIV.innerHTML = rowOfKeys.join('');
+  return rowDIV;
 }
 
-function sizeKeys(){
-  var new_size = '100%';
-  $('html').css('font-size',new_size);
-  $('body').css('font-size',new_size);
+var sizeKeys = function(){
+  var new_size = '200%';
+  $('html').css('font-size', new_size);
+  $('body').css('font-size', new_size);
 }
 
-generateLetters(row_2);
+var insertRow = function (index, row, container) {
+  var rowOfKeys = generateRowOfKeys(index, row);
+  container.appendChild(rowOfKeys);
+};
+
+
+
+var keysContainer = document.getElementById('keys');
+
+var i, l;
+for (i = 0, l = rows.length; i < l; i++) {
+  console.log('i', i);
+  insertRow(i, rows[i], keysContainer);
+};
 
 sizeKeys();
 
