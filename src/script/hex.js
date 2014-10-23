@@ -98,8 +98,13 @@ $('#keys').on('mouseup', '.hexagon-in2', function(){
 
 var ongoingTouches = new Array();
 
-var copyTouch = function (touch,frequency) {
-  return { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, frequency: frequency };
+var copyTouch = function (touch, $el, frequency) {
+  var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, frequency: touch.frequency };
+
+  if ($el !== void 0) copiedTouch.$el = $el;
+  if (frequency !== void 0) copiedTouch.frequency = frequency;
+
+  return copiedTouch;
 }
 
 var ongoingTouchIndexById = function (idToFind) {
@@ -116,35 +121,41 @@ var ongoingTouchIndexById = function (idToFind) {
 }
 
 $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
-  //console.log('t', e.type, $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency'), e.originalEvent.changedTouches, e);
   e.preventDefault();
-  var i;
-  var index;
-  var touches = e.originalEvent.changedTouches;
-  var frequency, oldFreq;
+
+  var i,
+      touches = e.originalEvent.changedTouches,
+      $el,
+      frequency,
+      index,
+      lastTouch;
+
   if (e.type === 'touchstart') {
     for (i = 0; i < touches.length; i++) {
-      var myjqe = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.hexagon-in2');
-      frequency = myjqe.data('frequency');
-      if (typeof frequency === "undefined") return;
-      else {
+      $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
+      frequency = $el.data('frequency');
+      ongoingTouches.push(copyTouch(touches[i], $el, frequency));
+      if (frequency !== void 0) {
         $('.hexagon-in2').removeClass('active');
-        myjqe.addClass('active');
+        $el.addClass('active');
+
+        synth.triggerAttack(frequency);
       }
-      ongoingTouches.push(copyTouch(touches[i],frequency));
-      synth.triggerAttack(frequency);
     }
   } else if (e.type === 'touchmove') {
     for (i = 0; i < touches.length; i++) {
       index = ongoingTouchIndexById(touches[i].identifier);
       if(index >= 0) {
-        oldFreq = ongoingTouches[index].frequency;
-        var myjqe = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.hexagon-in2');
-        frequency = myjqe.data('frequency');
-        ongoingTouches.splice(index, 1, copyTouch(touches[i],frequency));
-        if (frequency !== oldFreq) {
-          $('.hexagon-in2').removeClass('active');
-          myjqe.addClass('active');
+        lastTouch = copyTouch(ongoingTouches[index]);
+        $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
+        frequency = $el.data('frequency');
+        ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, frequency));
+        if (frequency !== lastTouch.frequency && lastTouch.$el) {
+          lastTouch.$el.removeClass('active');
+        }
+        if (frequency !== lastTouch.frequency && frequency !== void 0) {
+          $el.addClass('active');
+
           synth.triggerAttack(frequency);
         }
       } else {
@@ -155,8 +166,10 @@ $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (
     for (i = 0; i < touches.length; i++) {
       index = ongoingTouchIndexById(touches[i].identifier);
       if(index >= 0) {
+        lastTouch = ongoingTouches[index];
         ongoingTouches.splice(index, 1);
-        $('.hexagon-in2').removeClass('active');
+        lastTouch.$el.removeClass('active');
+
         synth.triggerRelease();
       } else {
         console.error('can\'t figure out which touch to end');
