@@ -6,7 +6,7 @@ var rows = [
 ];
 var startingOctave = 2;
 var notesPerOctave = 4;
-var keysPerRow = 10;
+var keysPerRow = 9;
 
 // Functions
 var getNoteFrequency = function (note) {
@@ -22,7 +22,7 @@ var generateRowOfKeys = function (index, row) {
     var note = row[(i % row.length)];
     var incidental = note.substring(1, 2);
     var octave = startingOctave + Math.floor(i / notesPerOctave);
-    var keyHTML = '<div class="key" data-frequency="' + getNoteFrequency(note + octave) + '"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2">';
+    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-frequency="' + getNoteFrequency(note + octave) + '">';
     var sup;
 
     if (incidental == '') {
@@ -86,17 +86,20 @@ var synth = new Tone.FMSynth();
 synth.setVolume(-10);
 synth.toMaster();
 
-$('#keys').on('mousedown', '.key', function(){
+$('#keys').on('mousedown', '.hexagon-in2', function(){
+  $('.hexagon-in2').removeClass('active');
+  $(this).addClass('active');
   synth.triggerAttack($(this).data('frequency'));
 });
-$('#keys').on('mouseup', '.key', function(){
+$('#keys').on('mouseup', '.hexagon-in2', function(){
+  $('.hexagon-in2').removeClass('active');
   synth.triggerRelease();
 });
 
 var ongoingTouches = new Array();
 
-var copyTouch = function (touch) {
-  return { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY };
+var copyTouch = function (touch,frequency) {
+  return { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, frequency: frequency };
 }
 
 var ongoingTouchIndexById = function (idToFind) {
@@ -118,20 +121,32 @@ $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (
   var i;
   var index;
   var touches = e.originalEvent.changedTouches;
-  var frequency;
+  var frequency, oldFreq;
   if (e.type === 'touchstart') {
     for (i = 0; i < touches.length; i++) {
-      ongoingTouches.push(copyTouch(touches[i]));
-      frequency = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency');
+      var myjqe = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.hexagon-in2');
+      frequency = myjqe.data('frequency');
+      if (typeof frequency === "undefined") return;
+      else {
+        $('.hexagon-in2').removeClass('active');
+        myjqe.addClass('active');
+      }
+      ongoingTouches.push(copyTouch(touches[i],frequency));
       synth.triggerAttack(frequency);
     }
   } else if (e.type === 'touchmove') {
     for (i = 0; i < touches.length; i++) {
       index = ongoingTouchIndexById(touches[i].identifier);
       if(index >= 0) {
-        ongoingTouches.splice(index, 1, copyTouch(touches[i]));
-        frequency = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency');
-        synth.triggerAttack(frequency);
+        oldFreq = ongoingTouches[index].frequency;
+        var myjqe = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.hexagon-in2');
+        frequency = myjqe.data('frequency');
+        ongoingTouches.splice(index, 1, copyTouch(touches[i],frequency));
+        if (frequency !== oldFreq) {
+          $('.hexagon-in2').removeClass('active');
+          myjqe.addClass('active');
+          synth.triggerAttack(frequency);
+        }
       } else {
         console.error('can\'t figure out which touch to continue');
       }
@@ -141,6 +156,7 @@ $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (
       index = ongoingTouchIndexById(touches[i].identifier);
       if(index >= 0) {
         ongoingTouches.splice(index, 1);
+        $('.hexagon-in2').removeClass('active');
         synth.triggerRelease();
       } else {
         console.error('can\'t figure out which touch to end');
