@@ -94,3 +94,24 @@
   top: -.2rem;
   font-size: 60%;
 }
+
+.playOverlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.playOverlay button {
+  background: white;
+  border-radius: 10rem;
+  font-size: 1rem;
+  padding: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+}

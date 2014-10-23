@@ -86,9 +86,74 @@ var synth = new Tone.FMSynth();
 synth.setVolume(-10);
 synth.toMaster();
 
-$('#keys').on('mouseenter', '.key', function(){
+$('#keys').on('mousedown', '.key', function(){
   synth.triggerAttack($(this).data('frequency'));
 });
-$('#keys').on('mouseleave', '.key', function(){
+$('#keys').on('mouseup', '.key', function(){
   synth.triggerRelease();
 });
+
+var ongoingTouches = new Array();
+
+var copyTouch = function (touch) {
+  return { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY };
+}
+
+var ongoingTouchIndexById = function (idToFind) {
+  var i;
+  var id;
+  for (i = 0; i < ongoingTouches.length; i++) {
+    id = ongoingTouches[i].identifier;
+
+    if (id == idToFind) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+$('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
+  //console.log('t', e.type, $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency'), e.originalEvent.changedTouches, e);
+  e.preventDefault();
+  var i;
+  var index;
+  var touches = e.originalEvent.changedTouches;
+  var frequency;
+  if (e.type === 'touchstart') {
+    for (i = 0; i < touches.length; i++) {
+      ongoingTouches.push(copyTouch(touches[i]));
+      frequency = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency');
+      synth.triggerAttack(frequency);
+    }
+  } else if (e.type === 'touchmove') {
+    for (i = 0; i < touches.length; i++) {
+      index = ongoingTouchIndexById(touches[i].identifier);
+      if(index >= 0) {
+        ongoingTouches.splice(index, 1, copyTouch(touches[i]));
+        frequency = $(document.elementFromPoint(e.originalEvent.changedTouches[0].pageX, e.originalEvent.changedTouches[0].pageY)).closest('.key').data('frequency');
+        synth.triggerAttack(frequency);
+      } else {
+        console.error('can\'t figure out which touch to continue');
+      }
+    }
+  } else if (['touchend', 'touchcancel', 'touchleave'].indexOf(e.type) !== -1) {
+    for (i = 0; i < touches.length; i++) {
+      index = ongoingTouchIndexById(touches[i].identifier);
+      if(index >= 0) {
+        ongoingTouches.splice(index, 1);
+        synth.triggerRelease();
+      } else {
+        console.error('can\'t figure out which touch to end');
+      }
+    }
+  }
+});
+
+/* from Tone.js/examples/Widgets.js */
+if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+  $('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
+  $('.playOverlay').on('click', function(){
+    Tone.startMobile();
+    $(this).remove();
+  });
+}
