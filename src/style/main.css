@@ -54,9 +54,6 @@ ul.keyboard li {
   font-size: 8em;
   text-shadow: 0.02em 0.04em 0 rgba(0,0,0,0.03);
   color: rgba(0,0,0,0.9);
-  text-align: center;
-  width: 2em;
-  height: 2em;
 }
 
 .keyboard h1.incidental {

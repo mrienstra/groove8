@@ -6,10 +6,9 @@ var rows = [
 ];
 var startingOctave = 2;
 var notesPerOctave = 4;
-var num_hex = 8;
+var keysPerRow = 12;
 
-
-
+// Functions
 var getNoteFrequency = function (note) {
   // See `src/script/lib/music.js-5277f8a.js`
   return Note.fromLatin(note).frequency();
@@ -19,7 +18,7 @@ var generateRowOfKeys = function (index, row) {
   var rowOfKeys = [];
   var octave;
   var i;
-  for (i = 0; i < num_hex; i++) {
+  for (i = 0; i < keysPerRow; i++) {
     var note = row[(i % row.length)];
     var incidental = note.substring(1, 2);
     var octave = startingOctave + Math.floor(i / notesPerOctave);
@@ -44,8 +43,17 @@ var generateRowOfKeys = function (index, row) {
   return rowDIV;
 }
 
-var sizeKeys = function(){
-  var new_size = '200%';
+var sizeKeys = function(container){
+  var keyboard_width = container.offsetWidth;
+  var key_width = keyboard_width / (keysPerRow+1);
+  var key_height = key_width * 2 / Math.sqrt(3);
+  var rows_height = key_height * 2.5;
+  // set top padding
+  container.style.paddingTop = 0;
+  var padding_top = (container.offsetHeight - rows_height) / 2;
+  container.style.paddingTop = padding_top;
+  // set key size
+  var new_size = (key_width*1.5625)+'%'; // 62.5% = 40px width
   $('html').css('font-size', new_size);
   $('body').css('font-size', new_size);
 }
@@ -55,19 +63,22 @@ var insertRow = function (index, row, container) {
   container.appendChild(rowOfKeys);
 };
 
+var initKeyboard = function(container) {
+  var i, l;
+  for (i = 0, l = rows.length; i < l; i++) {
+    insertRow(i, rows[i], container);
+  };
+  sizeKeys(container);
+  container.style.visibility = "visible";
+  window.onresize = function(event) {
+    sizeKeys(container);
+  }
+}
 
+initKeyboard(document.getElementById('keys'));
 
-var keysContainer = document.getElementById('keys');
-
-var i, l;
-for (i = 0, l = rows.length; i < l; i++) {
-  insertRow(i, rows[i], keysContainer);
-};
-
-sizeKeys();
-
-// Show / hide letters
-$('#letters').click(function(){
+// Show / hide notation
+$('#notation').click(function(){
   $('.key h1').toggle();
 });
 
