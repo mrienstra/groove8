@@ -6,7 +6,7 @@ var rows = [
 ];
 var startingOctave = 2;
 var notesPerOctave = 4;
-var keysPerRow = 12;
+var keysPerRow = 10;
 
 // Functions
 var getNoteFrequency = function (note) {
