@@ -1,4 +1,6 @@
 // Globals
+var is_mobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+var is_desktop = !(is_mobile);
 var rows = [
   ['Db', 'Eb', 'Gb', 'Bb'],
   ['D', 'F', 'Ab', 'B'],
@@ -14,8 +16,6 @@ var notesPerOctave = 4;
 var keysPerRow = 9;
 var synths = [];
 var synthCount = 10;
-
-
 
 // Functions
 var initSynths = function(){
@@ -112,20 +112,6 @@ var insertRow = function (index, row, container) {
   container.appendChild(rowOfKeys);
 };
 
-var initKeyboard = function(container) {
-  var i, l;
-  for (i = 0, l = rows.length; i < l; i++) {
-    insertRow(i, rows[i], container);
-  };
-  sizeKeys(container);
-  container.style.visibility = "visible";
-  window.onresize = function(event) {
-    sizeKeys(container);
-  }
-}
-
-initKeyboard(document.getElementById('keys'));
-
 initSynths();
 
 // Show / hide notation
@@ -133,106 +119,190 @@ $('#notation').click(function(){
   $('.key h1').toggle();
 });
 
-$('#keys').on('mousedown', '.hexagon-in2', function(){
-  $('.hexagon-in2').removeClass('active');
-  $(this).addClass('active');
-  startNote($(this).data('note'));
-});
-$('#keys').on('mouseup', '.hexagon-in2', function(){
-  $('.hexagon-in2').removeClass('active');
-  stopNote($(this).data('note'));
-});
+// ----------------------------------
+// Desktop & Keyboard, Mouse Handling
+// ----------------------------------
+if (is_desktop){
+  // Mouse
+  $('#keys').on('mousedown', '.hexagon-in2', function(){
+    $('.hexagon-in2').removeClass('active');
+    $(this).addClass('active');
+    startNote($(this).data('note'));
+  });
+  $('#keys').on('mouseup', '.hexagon-in2', function(){
+    $('.hexagon-in2').removeClass('active');
+    stopNote($(this).data('note'));
+  });
 
-var ongoingTouches = new Array();
-
-var copyTouch = function (touch, $el, note) {
-  var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, note: touch.note };
-
-  if ($el !== void 0) copiedTouch.$el = $el;
-  if (note !== void 0) copiedTouch.note = note;
-
-  return copiedTouch;
-}
-
-var ongoingTouchIndexById = function (idToFind) {
-  var i;
-  var id;
-  for (i = 0; i < ongoingTouches.length; i++) {
-    id = ongoingTouches[i].identifier;
-
-    if (id == idToFind) {
-      return i;
+  // Keyboard
+  var initKeyboard = function(container) {
+    var i, l;
+    for (i = 0, l = rows.length; i < l; i++) {
+      insertRow(i, rows[i], container);
+    };
+    sizeKeys(container);
+    container.style.visibility = "visible";
+    window.onresize = function(event) {
+      sizeKeys(container);
     }
   }
-  return -1;
+
+  initKeyboard(document.getElementById('keys'));
+
+
+  var keysDown = {};
+
+  var getKeyPressed = function (keyCode) {
+    var i, l, j, m, note, octave;
+    for (i = 0, l = keyMap.length; i < l; i++) {
+      for (j = 0, m = keyMap[i].length; j < m; j++) {
+        if (keyCode === keyMap[i][j]) {
+          note = rows[i][j % notesPerOctave];
+          octave = startingOctave + Math.floor(j / notesPerOctave);
+          return note + octave;
+        }
+      }
+    }
+  };
+  var keyboardDown = function (e) {
+    var note;
+
+    if (
+      e.defaultPrevented
+      || e.altKey
+      || e.ctrlKey
+      || e.metaKey
+      || e.keyCode in keysDown
+    ) {
+      return;
+    }
+
+   keysDown[e.keyCode] = true;
+
+   note = getKeyPressed(e.keyCode);
+
+   if (note) {
+     startNote(note);
+   }
+  };
+  var keyboardUp = function (e) {
+    var note;
+
+    if (
+      e.defaultPrevented
+      || e.altKey
+      || e.ctrlKey
+      || e.metaKey
+    ) {
+      return;
+    }
+
+    delete keysDown[e.keyCode];
+
+    note = getKeyPressed(e.keyCode);
+
+    if (note) {
+      stopNote(note);
+    }
+  };
+
+  window.addEventListener('keydown', keyboardDown);
+  window.addEventListener('keyup', keyboardUp);
 }
 
-$('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
-  e.preventDefault();
-
-  var i,
-      touches = e.originalEvent.changedTouches,
-      $el,
-      note,
-      index,
-      lastTouch;
-
-  if (e.type === 'touchstart') {
-    for (i = 0; i < touches.length; i++) {
-      $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-      note = $el.data('note');
-      ongoingTouches.push(copyTouch(touches[i], $el, note));
-      if (note !== void 0) {
-        $('.hexagon-in2').removeClass('active');
-        $el.addClass('active');
-
-        startNote(note);
-      }
-    }
-  } else if (e.type === 'touchmove') {
-    for (i = 0; i < touches.length; i++) {
-      index = ongoingTouchIndexById(touches[i].identifier);
-      if(index >= 0) {
-        lastTouch = copyTouch(ongoingTouches[index]);
-        $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-        note = $el.data('note');
-        ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, note));
-        if (note !== lastTouch.note && lastTouch.$el) {
-          lastTouch.$el.removeClass('active');
-        }
-        if (note !== lastTouch.note && note !== void 0) {
-          $el.addClass('active');
-
-          stopNote(note);
-        }
-      } else {
-        console.error('can\'t figure out which touch to continue');
-      }
-    }
-  } else if (['touchend', 'touchcancel', 'touchleave'].indexOf(e.type) !== -1) {
-    for (i = 0; i < touches.length; i++) {
-      index = ongoingTouchIndexById(touches[i].identifier);
-      if(index >= 0) {
-        lastTouch = ongoingTouches[index];
-        ongoingTouches.splice(index, 1);
-        lastTouch.$el.removeClass('active');
-
-        synth.triggerRelease();
-      } else {
-        console.error('can\'t figure out which touch to end');
-      }
-    }
-  }
-});
-
+// -----------------------
+// Mobile & Touch Handling
+// -----------------------
 /* from Tone.js/examples/Widgets.js */
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+if (is_mobile) {
   $('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
   $('.playOverlay').on('click', function(){
     Tone.startMobile();
     $(this).remove();
 
     //playChord();
+  });
+
+  var ongoingTouches = new Array();
+
+  var copyTouch = function (touch, $el, note) {
+    var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, note: touch.note };
+
+    if ($el !== void 0) copiedTouch.$el = $el;
+    if (note !== void 0) copiedTouch.note = note;
+
+    return copiedTouch;
+  }
+
+  var ongoingTouchIndexById = function (idToFind) {
+    var i;
+    var id;
+    for (i = 0; i < ongoingTouches.length; i++) {
+      id = ongoingTouches[i].identifier;
+
+      if (id == idToFind) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
+    e.preventDefault();
+
+    var i,
+        touches = e.originalEvent.changedTouches,
+        $el,
+        note,
+        index,
+        lastTouch;
+
+    if (e.type === 'touchstart') {
+      for (i = 0; i < touches.length; i++) {
+        $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
+        note = $el.data('note');
+        ongoingTouches.push(copyTouch(touches[i], $el, note));
+        if (note !== void 0) {
+          $('.hexagon-in2').removeClass('active');
+          $el.addClass('active');
+
+          startNote(note);
+        }
+      }
+    } else if (e.type === 'touchmove') {
+      for (i = 0; i < touches.length; i++) {
+        index = ongoingTouchIndexById(touches[i].identifier);
+        if(index >= 0) {
+          lastTouch = copyTouch(ongoingTouches[index]);
+          $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
+          note = $el.data('note');
+          ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, note));
+          if (note !== lastTouch.note && lastTouch.$el) {
+            lastTouch.$el.removeClass('active');
+          }
+          if (note !== lastTouch.note && note !== void 0) {
+            $el.addClass('active');
+
+            stopNote(note);
+          }
+        } else {
+          console.error('can\'t figure out which touch to continue');
+        }
+      }
+    } else if (['touchend', 'touchcancel', 'touchleave'].indexOf(e.type) !== -1) {
+      for (i = 0; i < touches.length; i++) {
+        index = ongoingTouchIndexById(touches[i].identifier);
+        if(index >= 0) {
+          lastTouch = ongoingTouches[index];
+          ongoingTouches.splice(index, 1);
+          lastTouch.$el.removeClass('active');
+
+          synth.triggerRelease();
+        } else {
+          console.error('can\'t figure out which touch to end');
+        }
+      }
+    }
   });
 }
 
@@ -255,62 +325,3 @@ var playChord = function () {
     i++;
   }, 2000);
 };
-
-var keysDown = {};
-
-var getKeyPressed = function (keyCode) {
-  var i, l, j, m, note, octave;
-  for (i = 0, l = keyMap.length; i < l; i++) {
-    for (j = 0, m = keyMap[i].length; j < m; j++) {
-      if (keyCode === keyMap[i][j]) {
-        note = rows[i][j % notesPerOctave];
-        octave = startingOctave + Math.floor(j / notesPerOctave);
-        return note + octave;
-      }
-    }
-  }
-};
-var keyboardDown = function (e) {
-  var note;
-
-  if (
-    e.defaultPrevented
-    || e.altKey
-    || e.ctrlKey
-    || e.metaKey
-    || e.keyCode in keysDown
-  ) {
-    return;
-  }
-
- keysDown[e.keyCode] = true;
-
- note = getKeyPressed(e.keyCode);
-
- if (note) {
-   startNote(note);
- }
-};
-var keyboardUp = function (e) {
-  var note;
-
-  if (
-    e.defaultPrevented
-    || e.altKey
-    || e.ctrlKey
-    || e.metaKey
-  ) {
-    return;
-  }
-
-  delete keysDown[e.keyCode];
-
-  note = getKeyPressed(e.keyCode);
-
-  if (note) {
-    stopNote(note);
-  }
-};
-
-window.addEventListener('keydown', keyboardDown);
-window.addEventListener('keyup', keyboardUp);
