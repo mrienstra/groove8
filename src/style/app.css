@@ -96,6 +96,17 @@
   font-size: 60%;
 }
 
+.key h1 sub {
+  vertical-align: sub;
+  position: relative;
+  top: -.2rem;
+  font-size: 30%;
+  opacity: 0.25;
+}
+.key h1.incidental sub {
+  left: -.5rem;
+}
+
 .playOverlay {
   position: fixed;
   top: 0;

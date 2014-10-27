@@ -7,9 +7,9 @@ var rows = [
   ['C', 'E', 'G', 'A']
 ];
 var keyMap = [
-  [87, 69, 82, 84, 89, 85, 73, 79],
-  [83, 68, 70, 71, 72, 74, 75, 76],
-  [90, 88, 67, 86, 66, 78, 77, 188]
+  [87, 69, 82, 84, 89, 85, 73, 79, 80],
+  [83, 68, 70, 71, 72, 74, 75, 76, 186],
+  [90, 88, 67, 86, 66, 78, 77, 188, 190]
 ];
 var startingOctave = 2;
 var notesPerOctave = 4;
@@ -17,7 +17,10 @@ var keysPerRow = 9;
 var synths = [];
 var synthCount = 10;
 
+
+
 // Functions
+
 var initSynths = function(){
   var i, synth;
   for (i = 0; i < synthCount; i++) {
@@ -75,10 +78,10 @@ var generateRowOfKeys = function (index, row) {
     var sup;
 
     if (incidental == '') {
-      keyHTML += '<h1>' + note + '</h1>';
+      keyHTML += '<h1>' + note + '<sub>' + octave + '</sub></h1>';
     } else {
       sup = (incidental === 'b') ? '&#x266d;' : '&#x266f;';
-      keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup></h1>';
+      keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup><sub>' + octave + '</sub></h1>';
     }
     keyHTML += '</div></div></div></div>';
 
@@ -112,17 +115,24 @@ var insertRow = function (index, row, container) {
   container.appendChild(rowOfKeys);
 };
 
-initSynths();
+var init = function(){
+  initSynths();
 
-// Show / hide notation
-$('#notation').click(function(){
-  $('.key h1').toggle();
-});
+  // Show / hide notation
+  $('#notation').click(function(){
+    $('.key h1').toggle();
+  });
+};
+
+
 
 // ----------------------------------
 // Desktop & Keyboard, Mouse Handling
 // ----------------------------------
+
 if (is_desktop){
+  init();
+
   // Mouse
   $('#keys').on('mousedown', '.hexagon-in2', function(){
     $('.hexagon-in2').removeClass('active');
@@ -210,11 +220,16 @@ if (is_desktop){
   window.addEventListener('keyup', keyboardUp);
 }
 
+
+
 // -----------------------
 // Mobile & Touch Handling
 // -----------------------
-/* from Tone.js/examples/Widgets.js */
+
 if (is_mobile) {
+  init();
+
+  /* from Tone.js/examples/Widgets.js */
   $('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
   $('.playOverlay').on('click', function(){
     Tone.startMobile();
