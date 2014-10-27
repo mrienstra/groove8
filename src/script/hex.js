@@ -4,11 +4,60 @@ var rows = [
   ['D', 'F', 'Ab', 'B'],
   ['C', 'E', 'G', 'A']
 ];
+var keyMap = [
+  [87, 69, 82, 84, 89, 85, 73, 79],
+  [83, 68, 70, 71, 72, 74, 75, 76],
+  [90, 88, 67, 86, 66, 78, 77, 188]
+];
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
+var synths = [];
+var synthCount = 10;
+
+
 
 // Functions
+var initSynths = function(){
+  var i, synth;
+  for (i = 0; i < synthCount; i++) {
+    synth = new Tone.FMSynth();
+    synth.setVolume(-10);
+    synth.toMaster();
+    synths[i] = {
+      synth: synth,
+      note: null
+    };
+  }
+};
+
+var startNote = function (note) {
+  console.log('startNote', note);
+  var i;
+
+  for (i = 0; i < synthCount; i++) {
+    if (synths[i].note === note) {
+      break;
+    } else if (!synths[i].note) {
+      synths[i].note = note;
+      synths[i].synth.triggerAttack(getNoteFrequency(note));
+      break;
+    }
+  }
+};
+var stopNote = function (note) {
+  console.log('stopNote', note);
+  var i;
+
+  for (i = 0; i < synthCount; i++) {
+    if (synths[i].note === note) {
+      synths[i].note = null;
+      synths[i].synth.triggerRelease();
+      break;
+    }
+  }
+};
+
 var getNoteFrequency = function (note) {
   // See `src/script/lib/music.js-5277f8a.js`
   return Note.fromLatin(note).frequency();
@@ -22,7 +71,7 @@ var generateRowOfKeys = function (index, row) {
     var note = row[(i % row.length)];
     var incidental = note.substring(1, 2);
     var octave = startingOctave + Math.floor(i / notesPerOctave);
-    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-frequency="' + getNoteFrequency(note + octave) + '">';
+    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-note="' + note + octave + '">';
     var sup;
 
     if (incidental == '') {
@@ -77,32 +126,30 @@ var initKeyboard = function(container) {
 
 initKeyboard(document.getElementById('keys'));
 
+initSynths();
+
 // Show / hide notation
 $('#notation').click(function(){
   $('.key h1').toggle();
 });
 
-var synth = new Tone.FMSynth();
-synth.setVolume(-10);
-synth.toMaster();
-
 $('#keys').on('mousedown', '.hexagon-in2', function(){
   $('.hexagon-in2').removeClass('active');
   $(this).addClass('active');
-  synth.triggerAttack($(this).data('frequency'));
+  startNote($(this).data('note'));
 });
 $('#keys').on('mouseup', '.hexagon-in2', function(){
   $('.hexagon-in2').removeClass('active');
-  synth.triggerRelease();
+  stopNote($(this).data('note'));
 });
 
 var ongoingTouches = new Array();
 
-var copyTouch = function (touch, $el, frequency) {
-  var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, frequency: touch.frequency };
+var copyTouch = function (touch, $el, note) {
+  var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, note: touch.note };
 
   if ($el !== void 0) copiedTouch.$el = $el;
-  if (frequency !== void 0) copiedTouch.frequency = frequency;
+  if (note !== void 0) copiedTouch.note = note;
 
   return copiedTouch;
 }
@@ -126,20 +173,20 @@ $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (
   var i,
       touches = e.originalEvent.changedTouches,
       $el,
-      frequency,
+      note,
       index,
       lastTouch;
 
   if (e.type === 'touchstart') {
     for (i = 0; i < touches.length; i++) {
       $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-      frequency = $el.data('frequency');
-      ongoingTouches.push(copyTouch(touches[i], $el, frequency));
-      if (frequency !== void 0) {
+      note = $el.data('note');
+      ongoingTouches.push(copyTouch(touches[i], $el, note));
+      if (note !== void 0) {
         $('.hexagon-in2').removeClass('active');
         $el.addClass('active');
 
-        synth.triggerAttack(frequency);
+        startNote(note);
       }
     }
   } else if (e.type === 'touchmove') {
@@ -148,15 +195,15 @@ $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (
       if(index >= 0) {
         lastTouch = copyTouch(ongoingTouches[index]);
         $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-        frequency = $el.data('frequency');
-        ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, frequency));
-        if (frequency !== lastTouch.frequency && lastTouch.$el) {
+        note = $el.data('note');
+        ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, note));
+        if (note !== lastTouch.note && lastTouch.$el) {
           lastTouch.$el.removeClass('active');
         }
-        if (frequency !== lastTouch.frequency && frequency !== void 0) {
+        if (note !== lastTouch.note && note !== void 0) {
           $el.addClass('active');
 
-          synth.triggerAttack(frequency);
+          stopNote(note);
         }
       } else {
         console.error('can\'t figure out which touch to continue');
@@ -184,5 +231,86 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
   $('.playOverlay').on('click', function(){
     Tone.startMobile();
     $(this).remove();
+
+    //playChord();
   });
 }
+
+var playChord = function () {
+  var freqs = [69.29565774421802, 77.78174593052023, 92.4986056779086, 116.54094037952248, 138.59131548843604, 155.56349186104046, 184.9972113558172, 233.08188075904496, 277.1826309768721, 73.41619197935188, 87.30705785825097, 103.82617439498628, 123.47082531403103, 146.8323839587038, 174.61411571650194, 207.65234878997256, 246.94165062806206, 293.6647679174076, 65.40639132514966, 82.4068892282175, 97.99885899543733, 110, 130.8127826502993, 164.81377845643496, 195.99771799087463, 220, 261.6255653005986];
+  var synths = [];
+  var i = 0, l = freqs.length;
+  var n = 4;
+  var id = window.setInterval(function(){
+    if (i < n) {
+      synths[i] = new Tone.FMSynth();
+      synths[i].setVolume(-10);
+      synths[i].toMaster();
+      synths[i].triggerAttack(freqs[i]);
+    } else {
+      synths[i % n].triggerRelease();
+      var j = i;
+      window.setTimeout(function(){ synths[j % n].triggerAttack(freqs[j % l]); }, 0);
+    }
+    i++;
+  }, 2000);
+};
+
+var keysDown = {};
+
+var getKeyPressed = function (keyCode) {
+  var i, l, j, m, note, octave;
+  for (i = 0, l = keyMap.length; i < l; i++) {
+    for (j = 0, m = keyMap[i].length; j < m; j++) {
+      if (keyCode === keyMap[i][j]) {
+        note = rows[i][j % notesPerOctave];
+        octave = startingOctave + Math.floor(j / notesPerOctave);
+        return note + octave;
+      }
+    }
+  }
+};
+var keyboardDown = function (e) {
+  var note;
+
+  if (
+    e.defaultPrevented
+    || e.altKey
+    || e.ctrlKey
+    || e.metaKey
+    || e.keyCode in keysDown
+  ) {
+    return;
+  }
+
+ keysDown[e.keyCode] = true;
+
+ note = getKeyPressed(e.keyCode);
+
+ if (note) {
+   startNote(note);
+ }
+};
+var keyboardUp = function (e) {
+  var note;
+
+  if (
+    e.defaultPrevented
+    || e.altKey
+    || e.ctrlKey
+    || e.metaKey
+  ) {
+    return;
+  }
+
+  delete keysDown[e.keyCode];
+
+  note = getKeyPressed(e.keyCode);
+
+  if (note) {
+    stopNote(note);
+  }
+};
+
+window.addEventListener('keydown', keyboardDown);
+window.addEventListener('keyup', keyboardUp);
