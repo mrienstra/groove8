@@ -25,6 +25,9 @@ var current_keys = rows['i'];
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
+
+var tallerKeys = true;
+
 var a_context;
 var master_gain;
 var notesPlaying = {};
@@ -117,7 +120,12 @@ var sizeKeys = function(container){
   var padding_top = (container.offsetHeight - rows_height) / 2;
   container.style.paddingTop = padding_top;
   // set key size
-  var new_size = (key_width*1.5625)+'%'; // 62.5% = 40px width
+  var new_size;
+  if (tallerKeys) {
+    new_size = (key_width * 1.82) + '%'; // 62.5% = 40px width
+  } else {
+    new_size = (key_width * 1.5625) + '%'; // 62.5% = 40px width
+  }
   $('html').css('font-size', new_size);
   $('body').css('font-size', new_size);
 }
@@ -176,6 +184,11 @@ if (is_desktop){
     for (i = 0, l = current_keys.length; i < l; i++) {
       insertRow(i, current_keys[i], container);
     };
+
+    if (tallerKeys === true) {
+      container.classList.add('tall');
+    }
+
     sizeKeys(container);
     container.style.visibility = "visible";
     window.onresize = function(event) {
@@ -271,6 +284,11 @@ if (is_mobile) {
     for (i = 0, l = current_keys.length; i < l; i++) {
       insertRow(i, current_keys[i], container);
     };
+
+    if (tallerKeys === true) {
+      container.classList.add('tall');
+    }
+
     sizeKeys(container);
     container.style.visibility = "visible";
     window.onresize = function(event) {
