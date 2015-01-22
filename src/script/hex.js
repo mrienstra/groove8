@@ -2,26 +2,37 @@
 var is_mobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 //is_mobile = false;
 var is_desktop = !(is_mobile);
-var rows = {
-  i:[
-  ['Db', 'Eb', 'Gb', 'Bb'],
-  ['D', 'F', 'Ab', 'B'],
-  ['C', 'E', 'G', 'A']],
-  iv:[
-  ['B', 'Eb', 'Gb', 'Ab'],
-  ['Bb', 'Db', 'E', 'G'],
-  ['C', 'D', 'F', 'A']],
-  v:[
-  ['Db', 'F', 'Ab', 'Bb'],
-  ['C', 'Eb', 'Gb', 'A'],
-  ['D', 'E', 'G', 'B']]
+var scales = {
+  i: {
+    rows: [
+      ['Db', 'Eb', 'Gb', 'Bb'],
+      ['D', 'F', 'Ab', 'B'],
+      ['C', 'E', 'G', 'A']
+    ]
+  },
+  iv: {
+    rows: [
+      ['B', 'Eb', 'Gb', 'Ab'],
+      ['Db', 'E', 'G', 'Bb'],
+      ['C', 'D', 'F', 'A']
+    ],
+    octaveOffsets: [-1, 0, 0]
+  },
+  v: {
+    rows: [
+      ['Db', 'F', 'Ab', 'Bb'],
+      ['Eb', 'Gb', 'A', 'C'],
+      ['D', 'E', 'G', 'B']
+    ]
+  }
 };
 var keyMap = [
   [87, 69, 82, 84, 89, 85, 73, 79, 80],
   [83, 68, 70, 71, 72, 74, 75, 76, 186],
   [90, 88, 67, 86, 66, 78, 77, 188, 190]
 ];
-var current_keys = rows['i'];
+var current_scale_name = 'i';
+var current_keys;
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
@@ -81,32 +92,60 @@ var getNoteFrequency = function (note) {
   return Note.fromLatin(note).frequency();
 };
 
-var generateRowOfKeys = function (index, row) {
-  var rowOfKeys = [];
-  var octave;
-  var i;
-  for (i = 0; i < keysPerRow; i++) {
-    var note = row[(i % row.length)];
-    var incidental = note.substring(1, 2);
-    var octave = startingOctave + Math.floor(i / notesPerOctave);
-    var keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-note="' + note + octave + '">';
-    var sup;
+var addOctavesToRows = function (rows) {
+  var octaveOffsets, rowsWithOctaves, i, l, octave, rowsWithOctaves, j, note, incidental, thisFreq, lastFreq;
 
-    if (incidental == '') {
-      keyHTML += '<h1>' + note + '<sub>' + octave + '</sub></h1>';
-    } else {
+  octaveOffsets = scales[current_scale_name].octaveOffsets || [];
+  rowsWithOctaves = [];
+  
+
+  for (i = 0, l = rows.length; i < l; i++) {
+    octave = startingOctave + (octaveOffsets[i] || 0);
+    rowWithOctaves = [];
+    for (j = 0; j < keysPerRow; j++) {
+      note = rows[i][(j % rows[i].length)];
+      incidental = note.substring(1, 2);
+
+      thisFreq = getNoteFrequency(note + octave);
+      if (lastFreq && lastFreq > thisFreq) octave++;
+      lastFreq = thisFreq;
+
+      rowWithOctaves.push(note + octave);
+    }
+
+    rowsWithOctaves.push(rowWithOctaves);
+  };
+
+  return rowsWithOctaves;
+};
+
+var generateRowOfKeys = function (index, row) {
+  var i, note, incidental, keyHTML, sup, rowOfKeys, rowDIV;
+  
+  rowOfKeys = [];
+
+  for (i = 0; i < keysPerRow; i++) {
+    note = row[(i % row.length)];
+    incidental = (note.length === 3) ? note.substring(1, 2) : void 0;
+
+    keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-note="' + note + '">';
+
+    if (incidental) {
       sup = (incidental === 'b') ? '&#x266d;' : '&#x266f;';
-      keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup><sub>' + octave + '</sub></h1>';
+      keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup><sub>' + note.substring(2, 3) + '</sub></h1>';
+    } else {
+      keyHTML += '<h1>' + note.substring(0, 1) + '<sub>' + note.substring(1, 2) + '</sub></h1>';
     }
     keyHTML += '</div></div></div></div>';
 
     rowOfKeys.push(keyHTML);
   }
 
-  var rowDIV = document.createElement('div');
+  rowDIV = document.createElement('div');
   rowDIV.id = 'r' + index;
   rowDIV.className = 'row';
   rowDIV.innerHTML = rowOfKeys.join('');
+
   return rowDIV;
 }
 
@@ -138,13 +177,16 @@ var insertRow = function (index, row, container) {
 var init = function(){
   initSynths();
 
+  current_keys = addOctavesToRows(scales[current_scale_name].rows);
+
   // Show / hide notation
   $('#controls .note').click(function(){
     if ($(this).hasClass('selected')) {
       // do nothing
     } else { // trigger key switch
       clearKeyboard($('#keys'));
-      current_keys = rows[($(this).data('set'))];
+      current_scale_name = $(this).data('set');
+      current_keys = addOctavesToRows(scales[current_scale_name].rows);
       initKeyboard(document.getElementById('keys'));
       $('#controls button').removeClass('selected');
       $(this).addClass('selected');
@@ -201,13 +243,12 @@ if (is_desktop){
   var keysDown = {};
 
   var getKeyPressed = function (keyCode) {
-    var i, l, j, m, note, octave;
+    var i, l, j, m, note;
     for (i = 0, l = keyMap.length; i < l; i++) {
       for (j = 0, m = keyMap[i].length; j < m; j++) {
         if (keyCode === keyMap[i][j]) {
           note = current_keys[i][j % notesPerOctave];
-          octave = startingOctave + Math.floor(j / notesPerOctave);
-          return note + octave;
+          return note;
         }
       }
     }
@@ -315,7 +356,7 @@ if (is_mobile) {
     for (i = 0; i < ongoingTouches.length; i++) {
       id = ongoingTouches[i].identifier;
 
-      if (id == idToFind) {
+      if (id === idToFind) {
         return i;
       }
     }
