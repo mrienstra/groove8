@@ -17,14 +17,34 @@
   padding-top: 1.125rem;
 }
 
-#notation {
+#controls {
+  font-size: .8rem;
+  font-family: Helvetica Neue;
   position: absolute;
-  bottom: .5rem;
   left: .5rem;
+  bottom: .5rem;
+  width: 100%;
+}
+
+#controls button {
   font-size: .8rem;
   font-family: Helvetica Neue;
   border-radius: 5px;
   background-color: #fff;
+}
+
+#controls button.selected {
+  background-color: #d86865;
+}
+
+#controls .note {
+  width: 5%;
+}
+
+#controls #notation { 
+  position: absolute;
+  bottom: 0;
+  right: 1rem;
 }
 
 .row {

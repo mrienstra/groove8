@@ -2,16 +2,26 @@
 var is_mobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 //is_mobile = false;
 var is_desktop = !(is_mobile);
-var rows = [
+var rows = {
+  i:[
   ['Db', 'Eb', 'Gb', 'Bb'],
   ['D', 'F', 'Ab', 'B'],
-  ['C', 'E', 'G', 'A']
-];
+  ['C', 'E', 'G', 'A']],
+  iv:[
+  ['B', 'Eb', 'Gb', 'Ab'],
+  ['Bb', 'Db', 'E', 'G'],
+  ['C', 'D', 'F', 'A']],
+  v:[
+  ['Db', 'F', 'Ab', 'Bb'],
+  ['C', 'Eb', 'Gb', 'A'],
+  ['D', 'E', 'G', 'B']]
+};
 var keyMap = [
   [87, 69, 82, 84, 89, 85, 73, 79, 80],
   [83, 68, 70, 71, 72, 74, 75, 76, 186],
   [90, 88, 67, 86, 66, 78, 77, 188, 190]
 ];
+var current_keys = rows['i'];
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
@@ -121,6 +131,18 @@ var init = function(){
   initSynths();
 
   // Show / hide notation
+  $('#controls .note').click(function(){
+    if ($(this).hasClass('selected')) {
+      // do nothing
+    } else { // trigger key switch
+      clearKeyboard($('#keys'));
+      current_keys = rows[($(this).data('set'))];
+      initKeyboard(document.getElementById('keys'));
+      $('#controls button').removeClass('selected');
+      $(this).addClass('selected');
+    }
+  });
+
   $('#notation').click(function(){
     $('.key h1').toggle();
   });
@@ -149,8 +171,8 @@ if (is_desktop){
   // Keyboard
   var initKeyboard = function(container) {
     var i, l;
-    for (i = 0, l = rows.length; i < l; i++) {
-      insertRow(i, rows[i], container);
+    for (i = 0, l = current_keys.length; i < l; i++) {
+      insertRow(i, current_keys[i], container);
     };
     sizeKeys(container);
     container.style.visibility = "visible";
@@ -159,8 +181,12 @@ if (is_desktop){
     }
   }
 
-  initKeyboard(document.getElementById('keys'));
+  var clearKeyboard = function(container) {
+    console.log(container);
+    container.empty();
+  }
 
+  initKeyboard(document.getElementById('keys'));
 
   var keysDown = {};
 
@@ -169,7 +195,7 @@ if (is_desktop){
     for (i = 0, l = keyMap.length; i < l; i++) {
       for (j = 0, m = keyMap[i].length; j < m; j++) {
         if (keyCode === keyMap[i][j]) {
-          note = rows[i][j % notesPerOctave];
+          note = current_keys[i][j % notesPerOctave];
           octave = startingOctave + Math.floor(j / notesPerOctave);
           return note + octave;
         }
@@ -245,8 +271,8 @@ if (is_mobile) {
   // Keyboard
   var initKeyboard = function(container) {
     var i, l;
-    for (i = 0, l = rows.length; i < l; i++) {
-      insertRow(i, rows[i], container);
+    for (i = 0, l = current_keys.length; i < l; i++) {
+      insertRow(i, current_keys[i], container);
     };
     sizeKeys(container);
     container.style.visibility = "visible";
