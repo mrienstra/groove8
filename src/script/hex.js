@@ -15,18 +15,18 @@ var keyMap = [
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
-//var synths = [];
-//var synthCount = 10;
+var a_context;
+var master_gain;
 var notesPlaying = {};
 
 // Functions
 
 
 var initSynths = function(){
-	a_context = new AudioContext();
-	master_gain = a_context.createGain();
-	master_gain.gain.value = 0.2;
-	master_gain.connect(a_context.destination);
+  a_context = window.AudioContext ? new AudioContext() : new webkitAudioContext();
+  master_gain = a_context.createGain();
+  master_gain.gain.value = 0.2;
+  master_gain.connect(a_context.destination);
 };
 
 var recompute_gain = function () {
@@ -52,35 +52,15 @@ var startNote = function (note) {
   osc.connect(master_gain);
   osc.start(0);
   recompute_gain();
-/*
-  for (i = 0; i < synthCount; i++) {
-    if (synths[i].note === note) {
-      break;
-    } else if (!synths[i].note) {
-      synths[i].note = note;
-      synths[i].synth.triggerAttack(getNoteFrequency(note));
-      break;
-    }
-  }
-*/
 };
 var stopNote = function (note) {
   console.log('stopNote', note);
   var i;
   if (! notesPlaying.hasOwnProperty(note))
-	return;
+  return;
   notesPlaying[note].stop(0);
   delete notesPlaying[note];
   recompute_gain();
-/*
-  for (i = 0; i < synthCount; i++) {
-    if (synths[i].note === note) {
-      synths[i].note = null;
-      synths[i].synth.triggerRelease();
-      break;
-    }
-  }
-*/
 };
 
 var getNoteFrequency = function (note) {
@@ -252,13 +232,15 @@ if (is_mobile) {
   init();
 
   /* from Tone.js/examples/Widgets.js */
-  $('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
+  /*$('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
   $('.playOverlay').on('click', function(){
-//    Tone.startMobile();
+    //startNote('Db2');
+    //window.setTimeout(function(){ stopNote('Db2'); }, 1000);
+
     $(this).remove();
 
     //playChord();
-  });
+  });*/
 
   // Keyboard
   var initKeyboard = function(container) {
@@ -315,7 +297,7 @@ if (is_mobile) {
         note = $el.data('note');
         ongoingTouches.push(copyTouch(touches[i], $el, note));
         if (note !== void 0) {
-          $('.hexagon-in2').removeClass('active');
+          //$('.hexagon-in2').removeClass('active');
           $el.addClass('active');
 
           startNote(note);
@@ -331,11 +313,13 @@ if (is_mobile) {
           ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, note));
           if (note !== lastTouch.note && lastTouch.$el) {
             lastTouch.$el.removeClass('active');
+
+            stopNote(lastTouch.note);
           }
           if (note !== lastTouch.note && note !== void 0) {
             $el.addClass('active');
 
-            stopNote(note);
+            startNote(note);
           }
         } else {
           console.error('can\'t figure out which touch to continue');
@@ -348,7 +332,7 @@ if (is_mobile) {
           lastTouch = ongoingTouches[index];
           ongoingTouches.splice(index, 1);
           lastTouch.$el.removeClass('active');
-		  var note = lastTouch.$el.data('note');
+      var note = lastTouch.$el.data('note');
           stopNote(note);
           //synth.triggerRelease();
         } else {
