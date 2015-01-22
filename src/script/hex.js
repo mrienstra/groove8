@@ -148,7 +148,9 @@ var init = function(){
   });
 };
 
-
+var clearKeyboard = function(container) {
+  container.empty();
+}
 
 // ----------------------------------
 // Desktop & Keyboard, Mouse Handling
@@ -179,11 +181,6 @@ if (is_desktop){
     window.onresize = function(event) {
       sizeKeys(container);
     }
-  }
-
-  var clearKeyboard = function(container) {
-    console.log(container);
-    container.empty();
   }
 
   initKeyboard(document.getElementById('keys'));
