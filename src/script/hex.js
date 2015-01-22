@@ -1,5 +1,6 @@
 // Globals
 var is_mobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+//is_mobile = false;
 var is_desktop = !(is_mobile);
 var rows = [
   ['Db', 'Eb', 'Gb', 'Bb'],
@@ -14,30 +15,44 @@ var keyMap = [
 var startingOctave = 2;
 var notesPerOctave = 4;
 var keysPerRow = 9;
-var synths = [];
-var synthCount = 10;
-
-
+//var synths = [];
+//var synthCount = 10;
+var notesPlaying = {};
 
 // Functions
 
+
 var initSynths = function(){
-  var i, synth;
-  for (i = 0; i < synthCount; i++) {
-    synth = new Tone.FMSynth();
-    synth.setVolume(-10);
-    synth.toMaster();
-    synths[i] = {
-      synth: synth,
-      note: null
-    };
+	a_context = new AudioContext();
+	master_gain = a_context.createGain();
+	master_gain.gain.value = 0.2;
+	master_gain.connect(a_context.destination);
+};
+
+var recompute_gain = function () {
+  var total = 0;
+  for (var prop in notesPlaying) {
+    if (notesPlaying.hasOwnProperty(prop))
+      total++;
   }
+  console.log("DRC count: " + total);
+  total += 0.1;
+  master_gain.gain.value = 1.0 / total;
 };
 
 var startNote = function (note) {
   console.log('startNote', note);
   var i;
-
+  // Check to see if the note is already playing.
+  if (notesPlaying.hasOwnProperty(note))
+    return;
+  // Otherwise, add it to the list, and start
+  var osc = notesPlaying[note] = a_context.createOscillator();
+  osc.frequency.value = getNoteFrequency(note)*2;
+  osc.connect(master_gain);
+  osc.start(0);
+  recompute_gain();
+/*
   for (i = 0; i < synthCount; i++) {
     if (synths[i].note === note) {
       break;
@@ -47,11 +62,17 @@ var startNote = function (note) {
       break;
     }
   }
+*/
 };
 var stopNote = function (note) {
   console.log('stopNote', note);
   var i;
-
+  if (! notesPlaying.hasOwnProperty(note))
+	return;
+  notesPlaying[note].stop(0);
+  delete notesPlaying[note];
+  recompute_gain();
+/*
   for (i = 0; i < synthCount; i++) {
     if (synths[i].note === note) {
       synths[i].note = null;
@@ -59,6 +80,7 @@ var stopNote = function (note) {
       break;
     }
   }
+*/
 };
 
 var getNoteFrequency = function (note) {
@@ -232,11 +254,26 @@ if (is_mobile) {
   /* from Tone.js/examples/Widgets.js */
   $('body').append('<div class="playOverlay"><button>\u25B6</button></div>');
   $('.playOverlay').on('click', function(){
-    Tone.startMobile();
+//    Tone.startMobile();
     $(this).remove();
 
     //playChord();
   });
+
+  // Keyboard
+  var initKeyboard = function(container) {
+    var i, l;
+    for (i = 0, l = rows.length; i < l; i++) {
+      insertRow(i, rows[i], container);
+    };
+    sizeKeys(container);
+    container.style.visibility = "visible";
+    window.onresize = function(event) {
+      sizeKeys(container);
+    }
+  }
+
+  initKeyboard(document.getElementById('keys'));
 
   var ongoingTouches = new Array();
 
@@ -311,8 +348,9 @@ if (is_mobile) {
           lastTouch = ongoingTouches[index];
           ongoingTouches.splice(index, 1);
           lastTouch.$el.removeClass('active');
-
-          synth.triggerRelease();
+		  var note = lastTouch.$el.data('note');
+          stopNote(note);
+          //synth.triggerRelease();
         } else {
           console.error('can\'t figure out which touch to end');
         }
@@ -321,22 +359,3 @@ if (is_mobile) {
   });
 }
 
-var playChord = function () {
-  var freqs = [69.29565774421802, 77.78174593052023, 92.4986056779086, 116.54094037952248, 138.59131548843604, 155.56349186104046, 184.9972113558172, 233.08188075904496, 277.1826309768721, 73.41619197935188, 87.30705785825097, 103.82617439498628, 123.47082531403103, 146.8323839587038, 174.61411571650194, 207.65234878997256, 246.94165062806206, 293.6647679174076, 65.40639132514966, 82.4068892282175, 97.99885899543733, 110, 130.8127826502993, 164.81377845643496, 195.99771799087463, 220, 261.6255653005986];
-  var synths = [];
-  var i = 0, l = freqs.length;
-  var n = 4;
-  var id = window.setInterval(function(){
-    if (i < n) {
-      synths[i] = new Tone.FMSynth();
-      synths[i].setVolume(-10);
-      synths[i].toMaster();
-      synths[i].triggerAttack(freqs[i]);
-    } else {
-      synths[i % n].triggerRelease();
-      var j = i;
-      window.setTimeout(function(){ synths[j % n].triggerAttack(freqs[j % l]); }, 0);
-    }
-    i++;
-  }, 2000);
-};
