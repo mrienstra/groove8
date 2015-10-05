@@ -2,13 +2,20 @@
 var is_mobile = (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 //is_mobile = false;
 var is_desktop = !(is_mobile);
+
+var attackTime = 0.05;
+var decayTime = 0.1;
+var gainLow = 0.25;
+var gainHigh = 0.75;
+
 var scales = {
   i: {
     rows: [
       ['Db', 'Eb', 'Gb', 'Bb'],
       ['D', 'F', 'Ab', 'B'],
       ['C', 'E', 'G', 'A']
-    ]
+    ],
+    octaveOffsets: [0, -1, 0]
   },
   iv: {
     rows: [
@@ -16,14 +23,15 @@ var scales = {
       ['Db', 'E', 'G', 'Bb'],
       ['C', 'D', 'F', 'A']
     ],
-    octaveOffsets: [-1, 0, 0]
+    octaveOffsets: [-1, -1, 0]
   },
   v: {
     rows: [
       ['Db', 'F', 'Ab', 'Bb'],
       ['Eb', 'Gb', 'A', 'C'],
       ['D', 'E', 'G', 'B']
-    ]
+    ],
+    octaveOffsets: [0, 0, 0]
   }
 };
 var keyMap = [
@@ -33,7 +41,8 @@ var keyMap = [
 ];
 var current_scale_name = 'i';
 var current_keys;
-var startingOctave = 2;
+var previous_keys;
+var startingOctave = 3;
 var notesPerOctave = 4;
 var keysPerRow = 9;
 
@@ -49,7 +58,7 @@ var notesPlaying = {};
 var initSynths = function(){
   a_context = window.AudioContext ? new AudioContext() : new webkitAudioContext();
   master_gain = a_context.createGain();
-  master_gain.gain.value = 0.2;
+  master_gain.gain.value = 1;
   master_gain.connect(a_context.destination);
 };
 
@@ -66,25 +75,31 @@ var recompute_gain = function () {
 
 var startNote = function (note) {
   console.log('startNote', note);
-  var i;
-  // Check to see if the note is already playing.
-  if (notesPlaying.hasOwnProperty(note))
-    return;
-  // Otherwise, add it to the list, and start
-  var osc = notesPlaying[note] = a_context.createOscillator();
-  osc.frequency.value = getNoteFrequency(note)*2;
-  osc.connect(master_gain);
-  osc.start(0);
-  recompute_gain();
+  var n;
+
+  if (notesPlaying.hasOwnProperty(note)) {
+    n = notesPlaying[note];
+    n.g.gain.cancelScheduledValues(a_context.currentTime);
+    n.g.gain.setValueAtTime(n.g.gain.value, a_context.currentTime);
+  } else {
+    n = notesPlaying[note] = {
+      o: a_context.createOscillator(),
+      g: a_context.createGain(),
+    };
+    n.g.gain.value = gainLow;
+    n.g.connect(a_context.destination);
+    n.o.frequency.value = getNoteFrequency(note) * 2;
+    n.o.connect(n.g);
+    n.o.start(0);
+  }
+  n.g.gain.linearRampToValueAtTime(gainHigh, a_context.currentTime + attackTime);
 };
 var stopNote = function (note) {
   console.log('stopNote', note);
-  var i;
-  if (! notesPlaying.hasOwnProperty(note))
-  return;
-  notesPlaying[note].stop(0);
-  delete notesPlaying[note];
-  recompute_gain();
+  var n = notesPlaying[note];
+  n.g.gain.cancelScheduledValues(a_context.currentTime);
+  n.g.gain.setValueAtTime(n.g.gain.value, a_context.currentTime);
+  n.g.gain.linearRampToValueAtTime(0.0, a_context.currentTime + decayTime);
 };
 
 var getNoteFrequency = function (note) {
@@ -93,57 +108,79 @@ var getNoteFrequency = function (note) {
 };
 
 var addOctavesToRows = function (rows) {
-  var octaveOffsets, rowsWithOctaves, i, l, octave, rowsWithOctaves, j, note, incidental, thisFreq, lastFreq;
+  var octaveOffsets, rowsWithOctaves, i, l, octave, rowsWithOctaves, j, a, note, thisFreq, lastFreq;
 
   octaveOffsets = scales[current_scale_name].octaveOffsets || [];
   rowsWithOctaves = [];
-  
+
+  window.allNotes = {};
 
   for (i = 0, l = rows.length; i < l; i++) {
     octave = startingOctave + (octaveOffsets[i] || 0);
     rowWithOctaves = [];
+
+    if (i === 1) {
+      note = rows[i][(3 % rows[i].length)];
+      rowWithOctaves.push(note + octave);
+      allNotes[i + '-' + 0] = note + octave;
+      lastFreq = getNoteFrequency(note + octave);
+      a = 1;
+    } else {
+      lastFreq = void 0;
+      a = 0;
+    }
+
     for (j = 0; j < keysPerRow; j++) {
       note = rows[i][(j % rows[i].length)];
-      incidental = note.substring(1, 2);
 
       thisFreq = getNoteFrequency(note + octave);
       if (lastFreq && lastFreq > thisFreq) octave++;
       lastFreq = thisFreq;
 
       rowWithOctaves.push(note + octave);
+
+      allNotes[i + '-' + (j + a)] = note + octave;
     }
 
     rowsWithOctaves.push(rowWithOctaves);
   };
 
+  console.log('rowsWithOctaves', rowsWithOctaves);
+
   return rowsWithOctaves;
 };
 
 var generateRowOfKeys = function (index, row) {
-  var i, note, incidental, keyHTML, sup, rowOfKeys, rowDIV;
-  
+  var i, l, note, incidental, keyHTML, sup, rowOfKeys, rowDIV;
+
   rowOfKeys = [];
 
-  for (i = 0; i < keysPerRow; i++) {
+  if (index === 1) {
+    l = keysPerRow + 1;
+  } else {
+    l = keysPerRow;
+  }
+
+  for (i = 0; i < l; i++) {
     note = row[(i % row.length)];
     incidental = (note.length === 3) ? note.substring(1, 2) : void 0;
 
-    keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-note="' + note + '">';
+    keyHTML = '<div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-id="' + index + '-' + i + '">';
 
-    if (incidental) {
+    /*if (incidental) {
       sup = (incidental === 'b') ? '&#x266d;' : '&#x266f;';
       keyHTML += '<h1 class="incidental">' + note.substring(0, 1) + '<sup>' + sup + '</sup><sub>' + note.substring(2, 3) + '</sub></h1>';
     } else {
       keyHTML += '<h1>' + note.substring(0, 1) + '<sub>' + note.substring(1, 2) + '</sub></h1>';
-    }
+    }*/
+
     keyHTML += '</div></div></div></div>';
 
     rowOfKeys.push(keyHTML);
   }
 
   rowDIV = document.createElement('div');
-  rowDIV.id = 'r' + index;
-  rowDIV.className = 'row';
+  rowDIV.className = 'row row' + index;
   rowDIV.innerHTML = rowOfKeys.join('');
 
   return rowDIV;
@@ -151,7 +188,7 @@ var generateRowOfKeys = function (index, row) {
 
 var sizeKeys = function(container){
   var keyboard_width = container.offsetWidth;
-  var key_width = keyboard_width / (keysPerRow+1);
+  var key_width = keyboard_width / (keysPerRow + 1.5);
   var key_height = key_width * 2 / Math.sqrt(3);
   var rows_height = key_height * 2.5;
   // set top padding
@@ -172,6 +209,18 @@ var sizeKeys = function(container){
 var insertRow = function (index, row, container) {
   var rowOfKeys = generateRowOfKeys(index, row);
   container.appendChild(rowOfKeys);
+};
+
+var insertControls = function (index, container) {
+  var controlsDiv = document.createElement('div');
+  controlsDiv.id = 'r' + index;
+  controlsDiv.className = 'row controlsRow';
+  controlsDiv.innerHTML = '\
+    <div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-set="i"></div></div></div></div>\
+    <div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-set="iv"></div></div></div></div>\
+    <div class="key"><div class="hexagon"><div class="hexagon-in1"><div class="hexagon-in2" data-set="v"></div></div></div></div>\
+  ';
+  container.appendChild(controlsDiv);
 };
 
 var init = function(){
@@ -226,6 +275,8 @@ if (is_desktop){
     for (i = 0, l = current_keys.length; i < l; i++) {
       insertRow(i, current_keys[i], container);
     };
+
+    insertControls(i, container);
 
     if (tallerKeys === true) {
       container.classList.add('tall');
@@ -326,6 +377,10 @@ if (is_mobile) {
       insertRow(i, current_keys[i], container);
     };
 
+    $('#controls').remove();
+
+    insertControls(i, container);
+
     if (tallerKeys === true) {
       container.classList.add('tall');
     }
@@ -339,83 +394,115 @@ if (is_mobile) {
 
   initKeyboard(document.getElementById('keys'));
 
-  var ongoingTouches = new Array();
+  var ongoingTouches = {};
+  window.ongoingTouches = ongoingTouches;
 
-  var copyTouch = function (touch, $el, note) {
-    var copiedTouch = { identifier: touch.identifier, pageX: touch.pageX, pageY: touch.pageY, $el: touch.$el, note: touch.note };
+  var changeArrangement = function (set) {
+    var id2, previousNote, newNote;
 
-    if ($el !== void 0) copiedTouch.$el = $el;
-    if (note !== void 0) copiedTouch.note = note;
+    if (set === current_scale_name) return;
 
-    return copiedTouch;
-  }
+    $('#keys').removeClass('a_i a_iv a_v').addClass('a_' + set);
 
-  var ongoingTouchIndexById = function (idToFind) {
-    var i;
-    var id;
-    for (i = 0; i < ongoingTouches.length; i++) {
-      id = ongoingTouches[i].identifier;
+    current_scale_name = set;
+    previous_keys = current_keys;
+    current_keys = addOctavesToRows(scales[current_scale_name].rows);
 
-      if (id === idToFind) {
-        return i;
+    for (id2 in ongoingTouches) {
+      previousNote = ongoingTouches[id2].note;
+      if (previousNote) {
+        stopNote(previousNote);
+
+        newNote = allNotes[ongoingTouches[id2].keyID];
+
+        if (newNote) {
+          startNote(newNote);
+          ongoingTouches[id2].note = newNote;
+        } else {
+          delete ongoingTouches[id2];
+        }
       }
     }
-    return -1;
-  }
+  };
 
   $('#keys').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
     e.preventDefault();
 
+    console.log('type', e.type);
+
     var i,
         touches = e.originalEvent.changedTouches,
         $el,
+        keyID,
         note,
-        index,
+        set,
+        previousNote,
+        col, row,
+        newNote, $newEl,
+        id,
+        id2,
         lastTouch;
 
     if (e.type === 'touchstart') {
       for (i = 0; i < touches.length; i++) {
+        id = touches[i].identifier;
         $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-        note = $el.data('note');
-        ongoingTouches.push(copyTouch(touches[i], $el, note));
+        keyID = $el.data('id');
+        if (keyID) note = allNotes[keyID];
+        set = $el.data('set');
+
+        ongoingTouches[id] = { $elRemoveClass: $el.removeClass.bind($el), note: note, set: set, keyID: keyID };
+
         if (note !== void 0) {
-          //$('.hexagon-in2').removeClass('active');
           $el.addClass('active');
 
           startNote(note);
+        } else if (set !== void 0) {
+          changeArrangement(set);
         }
       }
     } else if (e.type === 'touchmove') {
       for (i = 0; i < touches.length; i++) {
-        index = ongoingTouchIndexById(touches[i].identifier);
-        if(index >= 0) {
-          lastTouch = copyTouch(ongoingTouches[index]);
+        id = touches[i].identifier;
+        lastTouch = ongoingTouches[id];
+        if (lastTouch) {
           $el = $(document.elementFromPoint(touches[i].pageX, touches[i].pageY)).closest('.hexagon-in2');
-          note = $el.data('note');
-          ongoingTouches.splice(index, 1, copyTouch(touches[i], $el, note));
-          if (note !== lastTouch.note && lastTouch.$el) {
-            lastTouch.$el.removeClass('active');
+          keyID = $el.data('id');
+          if (keyID) note = allNotes[keyID];
+          set = $el.data('set');
+          if (note !== lastTouch.note) {
+            ongoingTouches[id] = { $elRemoveClass: $el.removeClass.bind($el), note: note, keyID: keyID };
 
-            stopNote(lastTouch.note);
-          }
-          if (note !== lastTouch.note && note !== void 0) {
-            $el.addClass('active');
+            if (lastTouch.$elRemoveClass) {
+              lastTouch.$elRemoveClass('active');
 
-            startNote(note);
+              stopNote(lastTouch.note);
+            }
+            if (note !== void 0) {
+              $el.addClass('active');
+
+              startNote(note);
+            }
+          } else if (note === void 0 && set !== void 0) {
+            changeArrangement(set);
           }
         } else {
-          console.error('can\'t figure out which touch to continue');
+          console.error('can\'t figure out which touch to continue', id, ongoingTouches);
         }
       }
-    } else if (['touchend', 'touchcancel', 'touchleave'].indexOf(e.type) !== -1) {
+    } else {
+      console.log('touchend', JSON.stringify(ongoingTouches));
       for (i = 0; i < touches.length; i++) {
-        index = ongoingTouchIndexById(touches[i].identifier);
-        if(index >= 0) {
-          lastTouch = ongoingTouches[index];
-          ongoingTouches.splice(index, 1);
-          lastTouch.$el.removeClass('active');
-      var note = lastTouch.$el.data('note');
-          stopNote(note);
+        id = touches[i].identifier;
+        lastTouch = ongoingTouches[id];
+        if(lastTouch) {
+          delete ongoingTouches[id];
+          lastTouch.$elRemoveClass('active');
+          var note = lastTouch.note;
+
+          if (note !== void 0) {
+            stopNote(note);
+          }
           //synth.triggerRelease();
         } else {
           console.error('can\'t figure out which touch to end');
@@ -423,5 +510,31 @@ if (is_mobile) {
       }
     }
   });
-}
 
+  if (!window.navigator.standalone) {
+    $('#hiddenSettings').on('touchend', function (e) {
+      e.preventDefault();
+
+      var newAttackTime = window.prompt('attackTime', attackTime);
+      if (newAttackTime === null) return;
+      attackTime = parseFloat(newAttackTime) || 0.05;
+
+      var newDecayTime = window.prompt('decayTime', decayTime);
+      if (newDecayTime === null) return;
+      decayTime = parseFloat(newDecayTime) || 0.1;
+
+      var newGainLow = window.prompt('gainLow', gainLow);
+      if (newGainLow === null) return;
+      gainLow = parseFloat(newGainLow) || 0.25;
+
+      var newGainHigh = window.prompt('gainHigh', gainHigh);
+      if (newGainHigh === null) return;
+      gainHigh = parseFloat(newGainHigh) || 0.75;
+    });
+  }
+
+  $('document').on('touchstart touchmove touchend touchcancel touchleave', function (e) {
+    alert('d');
+    e.preventDefault();
+  });
+}
